@@ -20,8 +20,8 @@ typedef struct listNode* pNode;
 struct treeNode
 {
 	int level;
-	int alpha;
-	int beta;
+	long long int alpha;
+	long long int beta;
 	int x1, y1;
 	int score;
 	int board[15][15];
@@ -38,18 +38,20 @@ int beSide = 1;//1为黑方，-1为白方,给  checkerboard 赋值后，视为�
 pTree treeHead = NULL;
 void startup();
 void setPosition(int[][15], int[][15]);
-void problePosition(int proBoard1[][15]);
+void proproblePosition(int proBoard1[][15]);
 void resetProblePosition();
 void show();
 void TLGO();
-int aPointIsOver(int, int, int [][15], int);
+int aPointIsOver(int, int, int[][15], int);
 void updateWithInput();
 int pixpoi(int);
-int evaluate();
+int evaluate(int[][15], int, int);
+int evaluate_white(int[][15], int, int, int);
 int pointIsOk(int, int);
-pTree buildGameTree(pTree, int);
-int maxNumber(int, int, int);
-int minNumber(int, int, int);
+void buildGameTree(pTree, int);
+void freeTree(pTree);
+long long int maxNumber(long long int, long long  int, long long  int);
+long long int minNumber(long long int, long long int, long long  int);
 int main() noexcept
 {
 	startup();
@@ -66,7 +68,34 @@ int main() noexcept
 			}
 			else
 			{
-				TLGO();
+				treeHead = (pTree)malloc(sizeof(struct treeNode));
+				treeHead->alpha = MINV;
+				treeHead->beta = MAXV;
+				setPosition(treeHead->board, checkerBoard);
+				treeHead->chileHead = NULL;
+				buildGameTree(treeHead, 0);
+				//从treeHead的若干个子节点中选出一个最合适的
+				pNode current, temp;
+				current = treeHead->chileHead;
+				long long int xx = current->treeChild->alpha;
+				temp = current;
+				//closegraph();
+				while (current->next != NULL)
+				{
+					//printf("(%d,%d)   %d     %d\n", current->treeChild->x1, current->treeChild->y1, current->treeChild->alpha,current->treeChild->beta);
+					if (xx <= current->next->treeChild->alpha)
+					{
+						temp = current->next;
+						xx = current->next->treeChild->alpha;
+
+					}
+					current = current->next;
+				}
+				int x = temp->treeChild->x1;
+				int y = temp->treeChild->y1;
+				checkerBoard[x][y] = 1;
+				beSide = -beSide;
+
 			}
 		}
 		else
@@ -74,17 +103,33 @@ int main() noexcept
 			updateWithInput();
 
 		}
+
 	}
 	return 0;
 }
-pTree buildGameTree(pTree father, int level)
+void buildGameTree(pTree father, int level)
 {
 	int proBoard1[15][15] = { 0 };
 	level++;
 	setPosition(proBoard1, father->board);
 	proproblePosition(proBoard1);
-	pTree current;
-	pNode pre, cur,temp;
+
+	for (int i = 0; i < 15; i++)
+	{
+		for (int j = 0; j < 15; j++)
+		{
+			if (proBoard1[i][j] == 2)
+			{
+				setfillcolor(RED);
+				fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+			}
+		}
+	}
+	FlushBatchDraw();
+	Sleep(10);
+
+	pTree current = NULL;
+	pNode pre, cur, temp;
 	pre = cur = NULL;
 	if (level < cen)
 	{
@@ -93,8 +138,8 @@ pTree buildGameTree(pTree father, int level)
 		{
 			for (int j = 0; j < 15; j++)
 			{
-				if (proBoard1[i][j] == 2 ) //点(i,j)是当前的一个可疑点
-				{		
+				if (proBoard1[i][j] == 2) //点(i,j)是当前的一个可疑点
+				{
 					current = (pTree)malloc(sizeof(struct treeNode));
 					current->father = father;
 					current->alpha = father->alpha; current->beta = father->beta;
@@ -102,6 +147,23 @@ pTree buildGameTree(pTree father, int level)
 					setPosition(current->board, father->board);
 					current->x1 = i; current->y1 = j;
 					current->score = 0;
+
+					if (level % 2 == 0)
+					{
+						current->board[i][j] = -1;
+						setfillcolor(WHITE);
+						fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+						FlushBatchDraw();
+						Sleep(10);
+					}
+					else
+					{
+						current->board[i][j] = 1;
+						setfillcolor(BLACK);
+						fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+						FlushBatchDraw();
+						Sleep(10);
+					}
 					current->chileHead = NULL;
 					//不管这个点怎么样都加入到father的链表中，区别只是不会继续向下搜索
 					cur = (pNode)malloc(sizeof(struct listNode));
@@ -134,29 +196,30 @@ pTree buildGameTree(pTree father, int level)
 					}
 
 				}
-				//运行到此处，当前可疑点current的所有子节点应已经添加完毕
-				temp = current->chileHead;
+				//运行到此处，当前可疑点已经被赋值
+				temp = father->chileHead;
 				while (temp != NULL)
 				{
 					if (level % 2 == 0) //在min层
 					{
-						current->beta = minNumber(current->beta, temp->treeChild->alpha, temp->treeChild->beta);
+						father->beta = minNumber(father->beta, temp->treeChild->alpha, temp->treeChild->beta);
 					}
 					else //在max层
 					{
-						current->alpha = maxNumber(current->alpha, temp->treeChild->alpha, temp->treeChild->beta);
+						father->alpha = maxNumber(father->alpha, temp->treeChild->alpha, temp->treeChild->beta);
 					}
-					if (current->alpha > current->beta) {
+					if (father->alpha > father->beta)
+					{
 						break;
 					}
 					temp = temp->next;
 				}
-				//对于current已经完成alpha，beta的复制，以及current子节点的剪枝
+
 			}
 		}
 		//运行到此处，father所有可疑点的子节点的子节点都已经处理完毕，但没有处理father与father自己的子节点的关系；
 	}
-	else if (level == cen)
+	else if (level >= cen)
 	{
 		for (int i = 0; i < 15; i++)
 		{
@@ -165,7 +228,8 @@ pTree buildGameTree(pTree father, int level)
 				if (proBoard1[i][j] == 2)
 				{
 					//在最后一层没有必要对father在建一个链表，每一个节点与father的值比较，满足条件就更新即可
-					int score = evaluate();
+					int score = evaluate(father->board, i, j);
+					father->board[i][j] = 0;
 					if (score < father->beta)
 					{
 						father->beta = score;
@@ -173,7 +237,7 @@ pTree buildGameTree(pTree father, int level)
 				}
 			}
 		}
-		
+		return;
 	}
 
 }
@@ -197,13 +261,13 @@ int pointIsOk(int x, int y)
 			{
 				if (checkerBoard[i][j] == 0)//当前点可以被选择
 				{
-					if (beSide == 1)
+					/*if (beSide == 1)
 					{
 						checkerBoard[i][j] = 1;
 					}
-					else {
-						checkerBoard[i][j] = -1;
-					}
+					else {*/
+					checkerBoard[i][j] = -1;
+					/*}*/
 					beSide = -beSide;
 					steps++;
 					return 1;
@@ -291,14 +355,15 @@ void proproblePosition(int proBoard1[][15])
 					{
 						if (k >= 0 && k < 15 && m >= 0 && m < 15 && proBoard1[k][m] == 0)
 						{
-							if (beSide == 1) //当前是黑的范围
-							{
-								proBoard1[k][m] = 2;
-							}
-							else
-							{
-								proBoard1[k][m] = -2;
-							}
+							//if (beSide == 1) //当前是黑的范围
+							//{
+							//	proBoard1[k][m] = 2;
+							//}
+							//else
+							//{
+							//	proBoard1[k][m] = -2;
+							//}
+							proBoard1[k][m] = 2;
 						}
 					}
 				}
@@ -316,21 +381,655 @@ void setPosition(int proBoard[][15], int checkerBoard1[][15])
 		}
 	}
 }
-int aPointIsOver(int a, int b, int m[][15], int level)
+int aPointIsOver(int x, int y, int m[][15], int level)
 {
+	int side;
+	if (level % 2 == 0)
+	{
+		side = -1;
+	}
+	else
+	{
+		side = 1;
+	}
+	m[x][y] = side;
 
+	for (int i = -4; i <= 0; i++)
+	{
+		int j = x + i;
+
+		if (j >= 0 && j + 4 < 15)
+		{
+			if (m[j][y] == side && m[j + 1][y] == side && m[j + 2][y] == side && m[j + 3][y] == side && m[j + 4][y] == side)
+				return 1;
+		}
+	}
+	//竖
+	for (int i = -4; i <= 0; i++)
+	{
+		int j = y + i;
+
+		if (j >= 0 && j + 4 < 15)
+		{
+			if (m[x][j] == side && m[x][j + 1] == side && m[x][j + 2] == side && m[x][j + 3] == side && m[x][j + 4] == side)
+				return 1;
+		}
+	}
+	//主对角线
+	for (int i = -4; i <= 0; i++)
+	{
+		int q = x + i;
+		int n = y + i;
+		if (q >= 0 && q + 4 < 15 && n >= 0 && n + 4 < 15)
+		{
+			if (m[q][n] == side && m[q + 1][n + 1] == side && m[q + 2][n + 2] == side && m[q + 3][n + 3] == side && m[q + 4][n + 4] == side)
+				return 1;
+		}
+	}
+	//副对角线
+	for (int i = -4, j = 4; i <= 0; i++, j--)
+	{
+		int q = x + i;
+		int n = y + j;
+		if (q >= 0 && q + 4 < 15 && n < 15 && n - 4 >= 0)
+		{
+			if (m[q][n] == side && m[q + 1][n - 1] == side && m[q + 2][n - 2] == side && m[q + 3][n - 3] == side && m[q + 4][n - 4] == side)
+				return 1;
+		}
+	}
+
+	return 0;
 }
-int maxNumber(int a, int b, int c)
+long long int maxNumber(long long int a, long long  int b, long long  int c)
 {
-
+	long long int max = a;
+	if (b > max) max = b;
+	if (c > max) max = c;
+	return max;
 }
-int minNumber(int a, int b, int c)
+long long int minNumber(long long int a, long long int b, long long int c)
 {
-
+	long long int min = a;
+	if (b < min) min = b;
+	if (c < min) min = c;
+	return min;
 }
-int evaluate()
+int evaluate(int m[][15], int x, int y) //当前棋盘为m，当前点为(x,y)
 {
+	int score = 0, a, b;
 
+	a = evaluate_white(m, x, y, -1);
+	b = evaluate_white(m, x, y, 1);
+	score = a + b;
+	return score;
+}
+int evaluate_white(int m[][15], int x, int y, int side)
+{
+	int score = 0;
+	int state1 = 0, state2 = 0, state3 = 0, state4 = 0;//1冲四，2活三，3眠三，4活二
+	m[x][y] = side;
+	//先判断连五
+	//横
+	for (int i = -4; i <= 0; i++)
+	{
+		int j = x + i;
+
+		if (j >= 0 && j + 4 < 15)
+		{
+			if (m[j][y] == side && m[j + 1][y] == side && m[j + 2][y] == side && m[j + 3][y] == side && m[j + 4][y] == side)
+				return 10000000;
+		}
+	}
+	//竖
+	for (int i = -4; i <= 0; i++)
+	{
+		int j = y + i;
+
+		if (j >= 0 && j + 4 < 15)
+		{
+			if (m[x][j] == side && m[x][j + 1] == side && m[x][j + 2] == side && m[x][j + 3] == side && m[x][j + 4] == side)
+				return 10000000;
+		}
+	}
+	//主对角线
+	for (int i = -4; i <= 0; i++)
+	{
+		int q = x + i;
+		int n = y + i;
+		if (q >= 0 && q + 4 < 15 && n >= 0 && n + 4 < 15)
+		{
+			if (m[q][n] == side && m[q + 1][n + 1] == side && m[q + 2][n + 2] == side && m[q + 3][n + 3] == side && m[q + 4][n + 4] == side)
+				return 10000000;
+		}
+	}
+	//副对角线
+	for (int i = -4, j = 4; i <= 0; i++, j--)
+	{
+		int q = x + i;
+		int n = y + j;
+		if (q >= 0 && q + 4 < 15 && n < 15 && n - 4 >= 0)
+		{
+			if (m[q][n] == side && m[q + 1][n - 1] == side && m[q + 2][n - 2] == side && m[q + 3][n - 3] == side && m[q + 4][n - 4] == side)
+				return 10000000;
+		}
+	}
+
+	//再判断活4
+	//横
+	for (int i = -3; i <= 0; i++)
+	{
+		int j = x + i;
+
+		if (j >= 0 && j + 3 < 15)
+		{
+			if (m[j][y] == side && m[j + 1][y] == side && m[j + 2][y] == side && m[j + 3][y] == side)
+			{
+				//活四情况
+				if (j - 1 >= 0 && m[j - 1][y] == 0 && j + 4 < 15 && m[j + 4][y] == 0)
+				{
+					score += 5000000;
+				}
+				//冲四情况
+				else if ((j - 1 >= 0 && m[j - 1][y] == 0 && j + 4 < 15 && m[j + 4][y] == -side) ||
+					(j - 1 >= 0 && m[j - 1][y] == -side && j + 4 < 15 && m[j + 4][y] == 0))
+				{
+					score += 10000;
+					state1 = 1;//出现冲4
+				}
+			}
+		}
+	}
+	//竖
+	for (int i = -3; i <= 0; i++)
+	{
+		int j = x + i;
+
+		if (j >= 0 && j + 3 < 15)
+		{
+			if (m[x][j] == side && m[x][j + 1] == side && m[x][j + 2] == side && m[x][j + 3] == side)
+			{
+				//活四情况
+				if (j - 1 >= 0 && m[x][j - 1] == 0 && j + 4 < 15 && m[x][j + 4] == 0)
+				{
+					score += 5000000;
+				}
+				//冲四情况
+				else if ((j - 1 >= 0 && m[x][j - 1] == 0 && j + 4 < 15 && m[x][j + 4] == -side) ||
+					(j - 1 >= 0 && m[x][j - 1] == -side && j + 4 < 15 && m[x][j + 4] == 0))
+				{
+					if (state1 == 1)//已出现冲4
+					{
+						score += 1000000;
+					}
+					else
+					{
+						score += 10000;
+						state1 = 1;
+					}
+				}
+			}
+		}
+	}
+	//主对角线
+	for (int i = -3; i <= 0; i++)
+	{
+		int q = x + i;
+		int n = y + i;
+		if (q >= 0 && q + 3 < 15 && n >= 0 && n + 3 < 15)
+		{
+			if (m[q][n] == side && m[q + 1][n + 1] == side && m[q + 2][n + 2] == side && m[q + 3][n + 3] == side)
+			{
+				if (q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == 0 && q + 4 < 15 && n + 4 < 15 && m[q + 4][n + 4] == 0)
+				{
+					score += 5000000;
+				}
+				//冲4情况
+				else if ((q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == 0 && q + 4 < 15 && n + 4 < 15 && m[q + 4][n + 4] == -side) ||
+					(q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == -side && q + 4 < 15 && n + 4 < 15 && m[q + 4][n + 4] == 0))
+				{
+					if (state1 == 1)//已出现冲4
+					{
+						score += 1000000;
+					}
+					else
+					{
+						score += 10000;
+						state1 = 1;
+					}
+				}
+
+			}
+		}
+	}
+	//副对角线
+	for (int i = -3, j = 3; i <= 0; i++, j--)
+	{
+		int q = x + i;
+		int n = y + j;
+		if (q >= 0 && q + 3 < 15 && n < 15 && n - 3 >= 0)
+		{
+			if (m[q][n] == side && m[q + 1][n - 1] == side && m[q + 2][n - 2] == side && m[q + 3][n - 3] == side)
+			{
+				if (q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == 0 && q + 4 < 15 && n - 4 >= 0 && m[q + 4][n - 4] == 0)
+				{
+					score += 5000000;
+				}
+				//冲4情况
+				else if ((q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == 0 && q + 4 < 15 && n - 4 >= 0 && m[q + 4][n - 4] == -side) ||
+					(q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == -side && q + 4 < 15 && n - 4 >= 0 && m[q + 4][n - 4] == 0))
+				{
+					if (state1 == 1)//已出现冲4
+					{
+						score += 1000000; //6个
+					}
+					else
+					{
+						score += 10000;
+						state1 = 1;
+					}
+				}
+
+			}
+		}
+	}
+
+
+	//3的情况
+	//先看连三
+	//横
+	for (int i = -2; i <= 0; i++)
+	{
+		int j = x + i;
+
+		if (j >= 0 && j + 2 < 15)
+		{
+			if (m[j][y] == side && m[j + 1][y] == side && m[j + 2][y] == side)
+			{
+				//活三情况
+				if (j - 1 >= 0 && m[j - 1][y] == 0 && j + 3 < 15 && m[j + 3][y] == 0)
+				{
+					state2 = 1;
+					if (state1 == 1)//冲四活三
+					{
+						score += 1000000;
+					}
+					else//仅活三
+					{
+						score += 50000;
+					}
+				}
+				//眠三情况
+				else if ((j - 1 >= 0 && m[j - 1][y] == 0 && j + 3 < 15 && m[j + 3][y] == -side) ||
+					(j - 1 >= 0 && m[j - 1][y] == -side && j + 3 < 15 && m[j + 3][y] == 0))
+				{
+					score += 1000;
+				}
+			}
+		}
+	}
+	//竖
+	for (int i = -2; i <= 0; i++)
+	{
+		int j = x + i;
+
+		if (j >= 0 && j + 2 < 15)
+		{
+			if (m[x][j] == side && m[x][j + 1] == side && m[x][j + 2] == side)
+			{
+				//活三情况
+				if (j - 1 >= 0 && m[x][j - 1] == 0 && j + 3 < 15 && m[x][j + 3] == 0)
+				{
+					if (state2 == 1)//双三
+					{
+						score += 900000;
+
+					}
+					else if (state1 == 1)//冲四活三
+					{
+						score += 1000000;
+					}
+					else
+					{
+						score += 50000;
+					}
+					state2 = 1;
+				}
+				//眠三情况
+				else if ((j - 1 >= 0 && m[x][j - 1] == 0 && j + 3 < 15 && m[x][j + 3] == -side) ||
+					(j - 1 >= 0 && m[x][j - 1] == -side && j + 3 < 15 && m[x][j + 3] == 0))
+				{
+					score += 1000;
+				}
+			}
+		}
+	}
+	//主对角线
+	for (int i = -2; i <= 0; i++)
+	{
+		int q = x + i;
+		int n = y + i;
+		if (q >= 0 && q + 2 < 15 && n >= 0 && n + 2 < 15)
+		{
+			if (m[q][n] == side && m[q + 1][n + 1] == side && m[q + 2][n + 2] == side)
+			{
+				//活三
+				if (q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == 0 && q + 3 < 15 && n + 3 < 15 && m[q + 3][n + 3] == 0)
+				{
+					if (state2 == 1)//双三
+					{
+						score += 900000;
+
+					}
+					else if (state1 == 1)//冲四活三
+					{
+						score += 1000000;
+					}
+					else
+					{
+						score += 50000;
+					}
+					state2 = 1;
+				}
+				//面三情况
+				else if ((q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == 0 && q + 3 < 15 && n + 3 < 15 && m[q + 3][n + 3] == -side) ||
+					(q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == -side && q + 3 < 15 && n + 3 < 15 && m[q + 3][n + 3] == 0))
+				{
+					score += 1000;
+				}
+
+			}
+		}
+	}
+	//副对角线
+	for (int i = -2, j = 2; i <= 0; i++, j--)
+	{
+		int q = x + i;
+		int n = y + j;
+		if (q >= 0 && q + 2 < 15 && n < 15 && n - 2 >= 0)
+		{
+			if (m[q][n] == side && m[q + 1][n - 1] == side && m[q + 2][n - 2] == side)
+			{
+				if (q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == 0 && q + 3 < 15 && n - 3 >= 0 && m[q + 3][n - 3] == 0)
+				{
+					if (state2 == 1)//双三
+					{
+						score += 900000;
+
+					}
+					else if (state1 == 1)//冲四活三
+					{
+						score += 1000000;
+					}
+					else
+					{
+						score += 50000;
+					}
+					state2 = 1;
+				}
+				//眠三情况
+				else if ((q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == 0 && q + 3 < 15 && n - 3 >= 0 && m[q + 3][n - 3] == -side) ||
+					(q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == -side && q + 3 < 15 && n - 3 >= 0 && m[q + 3][n - 3] == 0))
+				{
+					score += 1000;
+				}
+
+			}
+		}
+	}
+	//再来判断跳活三的情况
+	//横
+	for (int i = -3; i <= 0; i++)
+	{
+		int j = x + i;
+		if (j > 0 && j + 3 < 14) //元组再棋盘范围内
+		{
+			if (m[j][y] == side && m[j + 3][y] == side) //最左与最右是同色棋子
+			{
+				if ((m[j + 1][y] == 0 && m[j + 2][y] == side) || (m[j + 1][y] == side && m[j + 2][y] == 0)) //存在跳三原型，判断是活还是眠
+				{
+					if (m[j - 1][y] == 0 && m[j + 4][y] == 0) //活
+					{
+						if (state2 == 1)//双三
+						{
+							score += 500000;
+
+						}
+						else if (state1 == 1)//冲四活三
+						{
+							score += 1000000;
+						}
+						else
+						{
+							score += 50000;
+						}
+						state2 = 1;
+					}
+					else if ((m[j - 1][y] == 0 && m[j + 4][y] == -side) || (m[j - 1][y] == -side && m[j + 4][y] == 0))
+					{
+						score += 1000;
+					}
+				}
+			}
+		}
+	}
+	//竖
+	for (int i = -3; i <= 0; i++)
+	{
+		int j = x + i;
+		if (j > 0 && j + 3 < 14) //元组再棋盘范围内
+		{
+			if (m[x][j] == side && m[x][j + 3] == side) //最左与最右是同色棋子
+			{
+				if ((m[x][j + 1] == 0 && m[x][j + 2] == side) || (m[x][j + 1] == side && m[x][j + 2] == 0)) //存在跳三原型，判断是活还是眠
+				{
+					if (m[x][j - 1] == 0 && m[x][j + 4] == 0) //活
+					{
+						if (state2 == 1)//双三
+						{
+							score += 500000;
+
+						}
+						else if (state1 == 1)//冲四活三
+						{
+							score += 1000000;
+						}
+						else
+						{
+							score += 50000;
+						}
+						state2 = 1;
+					}
+					else if ((m[x][j - 1] == 0 && m[x][j + 4] == -side) || (m[x][j - 1] == -side && m[x][j + 4] == 0))
+					{
+						score += 1000;
+					}
+				}
+			}
+		}
+	}
+	//主对角线
+	for (int i = -3, j = -3; i <= 0; i++, j++)
+	{
+		int q = x + i;
+		int n = y + i;
+		if (q > 0 && q + 3 < 14 && n > 0 && n + 3 < 14) //元组再棋盘范围内
+		{
+			if (m[q][n] == side && m[q + 3][n + 3] == side) //最左与最右是同色棋子
+			{
+				if ((m[q + 1][n + 1] == 0 && m[q + 2][n + 2] == side) || (m[q + 1][n + 1] == side && m[q + 2][n + 2] == 0)) //存在跳三原型，判断是活还是眠
+				{
+					if (m[q - 1][n - 1] == 0 && m[q + 4][n + 4] == 0) //活
+					{
+						if (state2 == 1)//双三
+						{
+							score += 500000;
+
+						}
+						else if (state1 == 1)//冲四活三
+						{
+							score += 1000000;
+						}
+						else
+						{
+							score += 50000;
+						}
+						state2 = 1;
+					}
+					else if ((m[q - 1][n - 1] == 0 && m[q + 4][n + 4] == -side) || (m[q - 1][n - 1] == -side && m[q + 4][n + 4] == 0))
+					{
+						score += 1000;
+					}
+				}
+			}
+		}
+	}
+	//副对角线
+	for (int i = -3, j = 3; i <= 0; i++, j--)
+	{
+		int q = x + i;
+		int n = y + i;
+		if (q > 0 && q + 3 < 14 && n < 14 && n - 3 >0)//元组再棋盘范围内
+		{
+			if (m[q][n] == side && m[q + 3][n - 3] == side) //最左与最右是同色棋子
+			{
+				if ((m[q + 1][n - 1] == 0 && m[q + 2][n - 2] == side) || (m[q + 1][n - 1] == side && m[q + 2][n - 2] == 0)) //存在跳三原型，判断是活还是眠
+				{
+					if (m[q - 1][n + 1] == 0 && m[q + 4][n - 4] == 0) //活
+					{
+						if (state2 == 1)//双三
+						{
+							score += 500000;
+
+						}
+						else if (state1 == 1)//冲四活三
+						{
+							score += 1000000;
+						}
+						else
+						{
+							score += 50000;
+						}
+						state2 = 1;
+					}
+					else if ((m[q - 1][n + 1] == 0 && m[q + 4][n - 4] == -side) || (m[q - 1][n + 1] == -side && m[q + 4][n - 4] == 0))
+					{
+						score += 1000;
+					}
+				}
+			}
+		}
+	}
+	/*----------------------------再来分析二的情况-------------------------------------*/
+	//连二
+	//横
+	for (int i = -1; i <= 0; i++)
+	{
+		int j = x + i;
+
+		if (j >= 0 && j + 2 < 15)
+		{
+			if (m[j][y] == side && m[j + 1][y] == side)
+			{
+				//活二情况
+				if (j - 1 >= 0 && m[j - 1][y] == 0 && j + 2 < 15 && m[j + 2][y] == 0)
+				{
+					score += 100;
+				}
+				//眠二情况
+				else if ((j - 1 >= 0 && m[j - 1][y] == 0 && j + 2 < 15 && m[j + 2][y] == -side) ||
+					(j - 1 >= 0 && m[j - 1][y] == -side && j + 2 < 15 && m[j + 2][y] == 0))
+				{
+					score += 10;
+				}
+			}
+		}
+	}
+	//竖
+	for (int i = -1; i <= 0; i++)
+	{
+		int j = x + i;
+
+		if (j >= 0 && j + 1 < 15)
+		{
+			if (m[x][j] == side && m[x][j + 1] == side)
+			{
+				//活二情况
+				if (j - 1 >= 0 && m[x][j - 1] == 0 && j + 2 < 15 && m[x][j + 2] == 0)
+				{
+					score += 100;
+				}
+				//眠三情况
+				else if ((j - 1 >= 0 && m[x][j - 1] == 0 && j + 2 < 15 && m[x][j + 2] == -side) ||
+					(j - 1 >= 0 && m[x][j - 1] == -side && j + 2 < 15 && m[x][j + 2] == 0))
+				{
+					score += 10;
+				}
+			}
+		}
+	}
+	//主对角线
+	for (int i = -1; i <= 0; i++)
+	{
+		int q = x + i;
+		int n = y + i;
+		if (q >= 0 && q + 1 < 15 && n >= 0 && n + 1 < 15)
+		{
+			if (m[q][n] == side && m[q + 1][n + 1] == side)
+			{
+				//活二
+				if (q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == 0 && q + 2 < 15 && n + 2 < 15 && m[q + 2][n + 2] == 0)
+				{
+					score += 100;
+				}
+				//面三情况
+				else if ((q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == 0 && q + 2 < 15 && n + 2 < 15 && m[q + 2][n + 2] == -side) ||
+					(q - 1 >= 0 && n - 1 >= 0 && m[q - 1][n - 1] == -side && q + 3 < 15 && n + 2 < 15 && m[q + 2][n + 2] == 0))
+				{
+					score += 10;
+				}
+
+			}
+		}
+	}
+	//副对角线
+	for (int i = -3, j = 3; i <= 0; i++, j--)
+	{
+		int q = x + i;
+		int n = y + j;
+		if (q >= 0 && q + 2 < 15 && n < 15 && n - 1 >= 0)
+		{
+			if (m[q][n] == side && m[q + 1][n - 1] == side && m[q + 1][n - 1] == side)
+			{
+				if (q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == 0 && q + 2 < 15 && n - 2 >= 0 && m[q + 2][n - 2] == 0)
+				{
+					score += 100;
+				}
+				//眠三情况
+				else if ((q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == 0 && q + 2 < 15 && n - 2 >= 0 && m[q + 2][n - 2] == -side) ||
+					(q - 1 >= 0 && n + 1 < 15 && m[q - 1][n + 1] == -side && q + 2 < 15 && n - 2 >= 0 && m[q + 2][n - 2] == 0))
+				{
+					score += 10;
+				}
+
+			}
+		}
+	}
+	return score;
+}
+//应先释放链表内的树节点，然后再释放这个链表节点
+void freeTree(pTree head)
+{
+	if (head->chileHead != NULL)
+	{
+		freeTree(head->chileHead->treeChild);
+		pNode cur, pre;
+		cur = head->chileHead;
+		//
+	}
+	else
+	{
+		free(head);
+	}
 }
 void startup()
 {
