@@ -1,5 +1,4 @@
 /*
-
 */
 #define _CRT_SECURE_NO_WARNINGS
 #include<graphics.h>
@@ -37,16 +36,23 @@ struct listNode {   //一个指针链表，存每一个叶子节点;
 int beSide = 1;//1为黑方，-1为白方,给  checkerboard 赋值后，视为落子，回合结束，置换beSide的值
 pTree treeHead = NULL;
 void startup();
+int X = 0;
+int Y = 0;
+int isWin = 0;
+int Win();
 void setPosition(int[][15], int[][15]);
 void proproblePosition(int proBoard1[][15]);
 void resetProblePosition();
 void show();
+void show2();
 void TLGO();
 int aPointIsOver(int, int, int[][15], int);
 void updateWithInput();
 int pixpoi(int);
-int evaluate(int[][15], int, int);
-int evaluate_white(int[][15], int, int, int);
+long long int evaluate(int[][15], int, int);
+long long int eval_(int[][15], int, int);
+long long int value(int, int, int, int[][15], int, int);
+long long int evaluate_white(int[][15], int, int, int);
 int pointIsOk(int, int);
 void buildGameTree(pTree, int);
 void freeTree(pTree);
@@ -58,6 +64,48 @@ int main() noexcept
 	while (1)
 	{
 		show();
+		Win();
+		if (isWin != 0)
+		{
+			int const step = 50;
+			setfillcolor(RGB(237, 145, 33));
+			fillrectangle(0, 0, Width, High);
+			setlinecolor(BLACK);
+			//if (beSide == -1) //白方下棋
+			//{
+			//	setfillcolor(WHITE);
+			//	fillcircle(800, 50, 25);
+			//}
+			for (int i = 0; i < 15; i++)
+			{
+				line(boardgap, boardgap + i * step, boardgap + 14 * step, boardgap + i * step);
+				line(boardgap + i * step, boardgap, boardgap + i * step, boardgap + 14 * step);
+			}
+			for (int i = 0; i < 15; i++)
+			{
+				for (int j = 0; j < 15; j++)
+				{
+					if (checkerBoard[i][j] == 1)
+					{
+						setfillcolor(BLACK);
+						fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+					}
+					else if (checkerBoard[i][j] == -1)
+					{
+						setfillcolor(WHITE);
+						fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+					}
+					else if (checkerBoard[i][j] == 2)
+					{
+						setfillcolor(RED);
+						fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+					}
+				}
+			}
+			FlushBatchDraw();
+			Sleep(500);
+			break;
+		}
 		if (beSide == 1)//轮到黑
 		{
 			if (steps == 0)
@@ -82,8 +130,8 @@ int main() noexcept
 				//closegraph();
 				while (current->next != NULL)
 				{
-					//printf("(%d,%d)   %d     %d\n", current->treeChild->x1, current->treeChild->y1, current->treeChild->alpha,current->treeChild->beta);
-					if (xx <= current->next->treeChild->alpha)
+					//printf("(%d,%d)   %lld     %dll\n", current->treeChild->x1, current->treeChild->y1, current->treeChild->alpha, current->treeChild->beta);
+					if (xx < current->next->treeChild->alpha)
 					{
 						temp = current->next;
 						xx = current->next->treeChild->alpha;
@@ -91,21 +139,164 @@ int main() noexcept
 					}
 					current = current->next;
 				}
+				//	printf("(%d,%d)   %lld     %lld\n", current->treeChild->x1, current->treeChild->y1, current->treeChild->alpha, current->treeChild->beta);
 				int x = temp->treeChild->x1;
 				int y = temp->treeChild->y1;
-				checkerBoard[x][y] = 1;
+				checkerBoard[X][Y] = 2;
+				int const step = 50;
+				setfillcolor(RGB(237, 145, 33));
+				fillrectangle(0, 0, Width, High);
+				setlinecolor(BLACK);
+				//if (beSide == -1) //白方下棋
+				//{
+				//	setfillcolor(WHITE);
+				//	fillcircle(800, 50, 25);
+				//}
+				for (int i = 0; i < 15; i++)
+				{
+					line(boardgap, boardgap + i * step, boardgap + 14 * step, boardgap + i * step);
+					line(boardgap + i * step, boardgap, boardgap + i * step, boardgap + 14 * step);
+				}
+				for (int i = 0; i < 15; i++)
+				{
+					for (int j = 0; j < 15; j++)
+					{
+						if (checkerBoard[i][j] == 1)
+						{
+							setfillcolor(BLACK);
+							fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+						}
+						else if (checkerBoard[i][j] == -1)
+						{
+							setfillcolor(WHITE);
+							fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+						}
+						else if (checkerBoard[i][j] == 2)
+						{
+							setfillcolor(RED);
+							fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+						}
+					}
+				}
+				FlushBatchDraw();
+				Sleep(500);
+				checkerBoard[X][Y] = 1;
 				beSide = -beSide;
 
 			}
 		}
 		else
 		{
+			//show2();
 			updateWithInput();
 
 		}
 
 	}
+	while (1)
+	{
+		if (isWin == 1)
+		{
+
+		}
+	}
 	return 0;
+}
+int Win()
+{
+	int SIDE;
+	for (int i = 0; i < 15; i++)
+	{
+		for (int j = 0; j < 15; j++)
+		{
+			SIDE = checkerBoard[i][j];
+			
+			if (SIDE != 0)
+			{
+				//先判断横着的
+				if (j + 4 < 15)
+				{
+					if (checkerBoard[i][j + 1] == SIDE && checkerBoard[i][j + 2] == SIDE && checkerBoard[i][j + 3] == SIDE && checkerBoard[i][j + 4] == SIDE)
+					{
+						isWin = SIDE;
+						checkerBoard[i][j] = 2;
+						checkerBoard[i][j + 1]=2;
+						checkerBoard[i][j + 2]=2;
+						checkerBoard[i][j + 3]=2;
+						checkerBoard[i][j + 4]=2;
+						return SIDE;
+					}
+				}
+				//竖着的
+				if (i + 4 < 15)
+				{
+					if (checkerBoard[i + 1][j] == SIDE && checkerBoard[i + 2][j] == SIDE && checkerBoard[i + 3][j] == SIDE && checkerBoard[i + 4][j] == SIDE)
+					{
+						isWin = SIDE;	
+						checkerBoard[i][j] = 2;
+						checkerBoard[i + 1][j] = 2;
+						checkerBoard[i + 2][j] = 2;
+						checkerBoard[i + 3][j] = 2;
+						checkerBoard[i + 4][j] = 2;
+						return SIDE;
+					}
+				}
+				//主对角线
+				if (i + 4 < 15 && j + 4 < 15)
+				{
+					if (checkerBoard[i + 1][j + 1] == SIDE && checkerBoard[i + 2][j + 2] == SIDE && checkerBoard[i + 3][j + 3] == SIDE &&
+						checkerBoard[i + 4][j + 4] == SIDE)
+					{
+						isWin = SIDE;
+						checkerBoard[i][j] = 2;
+
+						checkerBoard[i+1][j + 1] = 2;
+						checkerBoard[i+2][j + 2] = 2;
+						checkerBoard[i+3][j + 3] = 2;
+						checkerBoard[i+4][j + 4] = 2;
+						return SIDE;
+					}
+				}
+				//副对角线
+				if (i - 4 >= 0 && j + 4 < 15)
+				{
+					if (checkerBoard[i - 1][j + 1] == SIDE && checkerBoard[i - 2][j + 2] == SIDE && 
+						checkerBoard[i - 3][j + 3] == SIDE && checkerBoard[i - 4][j + 4] == SIDE)
+					{
+						isWin = SIDE;
+						checkerBoard[i][j] = 2;
+						checkerBoard[i - 1][j + 1] = 2;
+						checkerBoard[i - 2][j + 2] = 2;
+						checkerBoard[i - 3][j + 3] = 2;
+						checkerBoard[i - 4][j + 4] = 2;
+						return SIDE;
+					}
+				}
+			}
+			
+		}
+	}
+	return 0;
+}
+void show2()
+{
+	puts("当前棋盘：");
+	printf("   ");
+	for (int i = 0; i < 15; i++)
+	{
+		printf("%3d ", i);
+	}
+	puts("");
+	for (int i = 0; i < 15; i++)
+	{
+		printf("%2d ", i);
+		for (int j = 0; j < 15; j++)
+		{
+			printf("%3d ", checkerBoard[i][j]);
+		}
+		puts("");
+	}
+	puts("----------------------");
 }
 void buildGameTree(pTree father, int level)
 {
@@ -114,19 +305,19 @@ void buildGameTree(pTree father, int level)
 	setPosition(proBoard1, father->board);
 	proproblePosition(proBoard1);
 
-	for (int i = 0; i < 15; i++)
-	{
-		for (int j = 0; j < 15; j++)
-		{
-			if (proBoard1[i][j] == 2)
-			{
-				setfillcolor(RED);
-				fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
-			}
-		}
-	}
-	FlushBatchDraw();
-	Sleep(10);
+	//for (int i = 0; i < 15; i++)
+	//{
+	//	for (int j = 0; j < 15; j++)
+	//	{
+	//		if (proBoard1[i][j] == 2)
+	//		{
+	//			setfillcolor(RED);
+	//			fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+	//		}
+	//	}
+	//}
+	//FlushBatchDraw();
+	//Sleep(10);
 
 	pTree current = NULL;
 	pNode pre, cur, temp;
@@ -151,18 +342,18 @@ void buildGameTree(pTree father, int level)
 					if (level % 2 == 0)
 					{
 						current->board[i][j] = -1;
-						setfillcolor(WHITE);
+						/*setfillcolor(WHITE);
 						fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
 						FlushBatchDraw();
-						Sleep(10);
+						Sleep(10);*/
 					}
 					else
 					{
 						current->board[i][j] = 1;
-						setfillcolor(BLACK);
-						fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
-						FlushBatchDraw();
-						Sleep(10);
+						/*	setfillcolor(BLACK);
+							fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
+							FlushBatchDraw();
+							Sleep(10);*/
 					}
 					current->chileHead = NULL;
 					//不管这个点怎么样都加入到father的链表中，区别只是不会继续向下搜索
@@ -181,10 +372,15 @@ void buildGameTree(pTree father, int level)
 					}
 					if (aPointIsOver(i, j, father->board, level) != 1)//这个点不会造成比赛结束
 					{
+						//	if(level==1) printf("层数%d，当前节点(%d,%d)进入递归\n", level, i, j);
+
+						father->board[i][j] = 0;
 						buildGameTree(current, level);
 					}
 					else //这个点会终结比赛
 					{
+						father->board[i][j] = 0;
+						//	printf("(%d，%d)父亲是(%d,%d) 发现终结比赛的点！！\n", current->x1, current->y1,father->x1,father->y1);
 						if (level % 2 == 0) //当前这个点，可能会让白子终结比赛,即在min层
 						{
 							current->beta = -10000000;
@@ -194,30 +390,68 @@ void buildGameTree(pTree father, int level)
 							current->alpha = 10000000;
 						}
 					}
+					father->board[i][j] = 0;
 
+					if (level % 2 == 0) //在max层,father在min层
+					{
+						father->beta = minNumber(father->beta, current->alpha, current->beta);
+
+					}
+					else //在min层
+					{
+						int a = father->alpha;
+						father->alpha = maxNumber(father->alpha, current->alpha, current->beta);
+						int b = father->alpha;
+						if (a != b) //
+						{
+							if (father == treeHead)
+							{
+								X = current->x1;
+								Y = current->y1;
+							}
+						}
+					}
+					if (father->alpha >= father->beta)
+					{
+						return;
+					}
+					/*		if (level == 2)
+							{
+								printf("(%d，%d) alpha %lld  beta %lld 父亲是(%d,%d) alpha %lld beta %lld----爹的爹 %lld  %lld\n", current->x1, current->y1, current->alpha,
+									current->beta, father->x1, father->y1,father->alpha, father->beta,treeHead->alpha,treeHead->beta);
+							}*/
 				}
 				//运行到此处，当前可疑点已经被赋值
-				temp = father->chileHead;
-				while (temp != NULL)
-				{
-					if (level % 2 == 0) //在min层
-					{
-						father->beta = minNumber(father->beta, temp->treeChild->alpha, temp->treeChild->beta);
-					}
-					else //在max层
-					{
-						father->alpha = maxNumber(father->alpha, temp->treeChild->alpha, temp->treeChild->beta);
-					}
-					if (father->alpha > father->beta)
-					{
-						break;
-					}
-					temp = temp->next;
-				}
 
 			}
 		}
 		//运行到此处，father所有可疑点的子节点的子节点都已经处理完毕，但没有处理father与father自己的子节点的关系；
+		//if (level != 1)
+		//{
+		//	printf("父亲是(%d,%d)----------\n", father->x1, father->y1);
+		//	temp = father->chileHead;
+		//	while (temp != NULL)
+		//	{
+		//		if (level % 2 == 0) //在max层,father在min层
+		//		{
+		//			father->beta = minNumber(father->beta, temp->treeChild->alpha, temp->treeChild->beta);
+		//			
+		//		}
+		//		else //在min层
+		//		{
+		//			
+		//			father->alpha = maxNumber(father->alpha, temp->treeChild->alpha, temp->treeChild->beta);
+		//		}
+		//		if (father->alpha > father->beta)
+		//		{
+		//			break;
+		//		}
+		//		printf("(%d,%d)   %lld     %lld\n", temp->treeChild->x1, temp->treeChild->y1, temp->treeChild->alpha, temp->treeChild->beta);
+		//		temp = temp->next;
+
+		//	}
+		//printf("父亲是(%d,%d)  alpha :%lld beta :%lld 搜索完毕----------\n", father->x1, father->y1, father->alpha, father->beta);
+		//}
 	}
 	else if (level >= cen)
 	{
@@ -228,11 +462,17 @@ void buildGameTree(pTree father, int level)
 				if (proBoard1[i][j] == 2)
 				{
 					//在最后一层没有必要对father在建一个链表，每一个节点与father的值比较，满足条件就更新即可
-					int score = evaluate(father->board, i, j);
+					long long int score = eval_(father->board, i, j);
+
+					//printf("(%d,%d)父亲是(%d,%d)----score:%lld  父亲的alpha %lld  beta  %lld \n", i, j, father->x1, father->y1, score, father->alpha, father->beta);
 					father->board[i][j] = 0;
-					if (score < father->beta)
+					if (score > father->alpha)
 					{
-						father->beta = score;
+						father->alpha = score;
+					}
+					if (father->alpha >= father->beta)
+					{
+						return;
 					}
 				}
 			}
@@ -324,9 +564,11 @@ void show()//构建15*15的棋盘
 				setfillcolor(WHITE);
 				fillcircle(boardgap + 50 * i, boardgap + 50 * j, 20);
 			}
+			
 		}
 	}
 	FlushBatchDraw();
+	
 }
 void resetProblePosition()
 {
@@ -454,18 +696,381 @@ long long int minNumber(long long int a, long long int b, long long int c)
 	if (c < min) min = c;
 	return min;
 }
-int evaluate(int m[][15], int x, int y) //当前棋盘为m，当前点为(x,y)
+long long int value(int white, int black, int blank, int m[][15])
 {
-	int score = 0, a, b;
+	long long int score = 0;
+	return 0;
+}
+long long int eval_(int m[][15], int x, int y) //正确的评估函数
+{
+	m[x][y] = 1;//最后一层，黑的
+	//先判断横着的
+	/*if (m[10][10] == 1)
+	{
+		printf("   ");
+		for (int i = 0; i < 15; i++)
+		{
+			printf("%3d ", i);
+		}
+		puts("");
+		for (int i = 0; i < 15; i++)
+		{
+			printf("%2d ", i);
+			for (int j = 0; j < 15; j++)
+			{
+				printf("%3d ", m[i][j]);
+			}
+			puts("");
+		}
+		puts("----------------------");
+	}*/
+	long long int score = 0;
+	int white = 0, black = 0, blank = 0;
+	for (int i = 0; i < 15; i++)
+	{
+		for (int j = 0; j < 15; j++)
+		{
+			//判断横着的
+		//	printf("(%d,%d)\n", i, j);
+			if (j + 4 < 15)
+			{
+				white = 0, black = 0, blank = 0;
+				if (m[i][j] == 1) black++;
+				else if (m[i][j] == -1) white++;
+				else if (m[i][j] == 0) blank++;
+
+				if (m[i][j + 1] == 1) black++;
+				else if (m[i][j + 1] == -1) white++;
+				else if (m[i][j + 1] == 0) blank++;
+
+				if (m[i][j + 2] == 1) black++;
+				else if (m[i][j + 2] == -1) white++;
+				else if (m[i][j + 2] == 0) blank++;
+
+				if (m[i][j + 3] == 1) black++;
+				else if (m[i][j + 3] == -1) white++;
+				else if (m[i][j + 3] == 0) blank++;
+
+				if (m[i][j + 4] == 1) black++;
+				else if (m[i][j + 4] == -1) white++;
+				else if (m[i][j + 4] == 0) blank++;
+
+				//	printf("横black%d  white%d blank%d\n", black, white, blank);
+				if (white != 0 && black != 0)
+				{
+					score += 0;
+
+				}
+				else if (black == 1 && blank == 4)
+				{
+					score += 1;
+
+				}
+				else if (black == 2 && blank == 3)
+				{
+					score += 10;
+				}
+				else if (black == 3 && blank == 2)
+				{
+					score += 100;
+				}
+				else if (black == 4 && blank == 1)
+				{
+					score += 10000;
+				}
+				else if (black == 5 && blank == 0)
+				{
+					score += 1000000;
+				}
+				else if (white == 1 && blank == 4)
+				{
+					score -= 1;
+				}
+				else if (white == 2 && blank == 3)
+				{
+					score -= 10;
+				}
+				else if (white == 3 && blank == 2)
+				{
+					if (m[i][j] == 0 && m[i][j + 1] == -1 && m[i][j + 2] == -1 && m[i][j + 3] == -1 && m[i][j + 4] == 0)
+					{
+						score -= 2000;
+					}
+					else
+					{
+						score -= 1000;
+					}
+
+				}
+				else if (white == 4 && blank == 1)
+				{
+					score -= 100000;
+
+				}
+				else if (white == 5)
+				{
+					score -= 10000000;
+				}
+			}
+
+			if (i + 4 < 15)
+			{
+				white = 0, black = 0, blank = 0;
+				if (m[i][j] == 1) black++;
+				else if (m[i][j] == -1) white++;
+				else if (m[i][j] == 0) blank++;
+
+				if (m[i + 1][j] == 1) black++;
+				else if (m[i + 1][j] == -1) white++;
+				else if (m[i + 1][j] == 0) blank++;
+
+				if (m[i + 2][j] == 1) black++;
+				else if (m[i + 2][j] == -1) white++;
+				else if (m[i + 2][j] == 0) blank++;
+
+				if (m[i + 3][j] == 1) black++;
+				else if (m[i + 3][j] == -1) white++;
+				else if (m[i + 3][j] == 0) blank++;
+
+				if (m[i + 4][j] == 1) black++;
+				else if (m[i + 4][j] == -1) white++;
+				else if (m[i + 4][j] == 0) blank++;
+				//	printf("竖black%d  white%d blank%d\n", black, white, blank);
+				if (white != 0 && black != 0)
+				{
+					score += 0;
+				}
+				else if (black == 1 && blank == 4)
+				{
+					score += 1;
+				}
+				else if (black == 2 && blank == 3)
+				{
+					score += 10;
+				}
+				else if (black == 3 && blank == 2)
+				{
+					score += 100;
+				}
+				else if (black == 4 && blank == 1)
+				{
+					score += 10000;
+				}
+				else if (black == 5 && blank == 0)
+				{
+					score += 1000000;
+				}
+				else if (white == 1 && blank == 4)
+				{
+					score -= 1;
+				}
+				else if (white == 2 && blank == 3)
+				{
+					score -= 10;
+				}
+				else if (white == 3 && blank == 2)
+				{
+					if (m[i][j] == 0 && m[i + 1][j] == -1 && m[i + 2][j] == -1 && m[i + 3][j] == -1 && m[i + 4][j] == 0)
+					{
+						score -= 2000;
+					}
+					else
+					{
+						score -= 1000;
+					}
+
+				}
+				else if (white == 4 && blank == 1)
+				{
+					score -= 100000;
+
+				}
+				else if (white == 5)
+				{
+					score -= 10000000;
+				}
+
+			}
+			if (i + 4 < 15 && j + 4 < 15)
+			{
+				white = 0, black = 0, blank = 0;
+				if (m[i][j] == 1) black++;
+				else if (m[i][j] == -1) white++;
+				else if (m[i][j] == 0) blank++;
+
+				if (m[i + 1][j + 1] == 1) black++;
+				else if (m[i + 1][j + 1] == -1) white++;
+				else if (m[i + 1][j + 1] == 0) blank++;
+
+				if (m[i + 2][j + 2] == 1) black++;
+				else if (m[i + 2][j + 2] == -1) white++;
+				else if (m[i + 2][j + 2] == 0) blank++;
+
+				if (m[i + 3][j + 3] == 1) black++;
+				else if (m[i + 3][j + 3] == -1) white++;
+				else if (m[i + 3][j + 3] == 0) blank++;
+
+				if (m[i + 4][j + 4] == 1) black++;
+				else if (m[i + 4][j + 4] == -1) white++;
+				else if (m[i + 4][j + 4] == 0) blank++;
+				//	printf("主对角线black%d  white%d blank%d\n", black, white, blank);
+				if (white != 0 && black != 0)
+				{
+					score += 0;
+				}
+				else if (black == 1 && blank == 4)
+				{
+					score += 1;
+				}
+				else if (black == 2 && blank == 3)
+				{
+					score += 10;
+				}
+				else if (black == 3 && blank == 2)
+				{
+					score += 100;
+				}
+				else if (black == 4 && blank == 1)
+				{
+					score += 10000;
+				}
+				else if (black == 5 && blank == 0)
+				{
+					score += 1000000;
+				}
+				else if (white == 1 && blank == 4)
+				{
+					score -= 1;
+				}
+				else if (white == 2 && blank == 3)
+				{
+					score -= 10;
+				}
+				else if (white == 3 && blank == 2)
+				{
+					if (m[i][j] == 0 && m[i + 1][j + 1] == -1 && m[i + 2][j + 2] == -1 && m[i + 3][j + 3] == -1 && m[i + 4][j + 4] == 0)
+					{
+						score -= 2000;
+					}
+					else
+					{
+						score -= 1000;
+					}
+
+				}
+				else if (white == 4 && blank == 1)
+				{
+					score -= 100000;
+
+				}
+				else if (white == 5)
+				{
+					score -= 10000000;
+				}
+			}
+			if (i + 4 < 15 && j - 4 >= 0)
+			{
+				white = 0, black = 0, blank = 0;
+				if (m[i][j] == 1) black++;
+				else if (m[i][j] == -1) white++;
+				else if (m[i][j] == 0) blank++;
+
+				if (m[i + 1][j - 1] == 1) black++;
+				else if (m[i + 1][j - 1] == -1) white++;
+				else if (m[i + 1][j - 1] == 0) blank++;
+
+				if (m[i + 2][j - 2] == 1) black++;
+				else if (m[i + 2][j - 2] == -1) white++;
+				else if (m[i + 2][j - 2] == 0) blank++;
+
+				if (m[i + 3][j - 3] == 1) black++;
+				else if (m[i + 3][j - 3] == -1) white++;
+				else if (m[i + 3][j - 3] == 0) blank++;
+
+				if (m[i + 4][j - 4] == 1) black++;
+				else if (m[i + 4][j - 4] == -1) white++;
+				else if (m[i + 4][j - 4] == 0) blank++;
+				//	printf("副对角线black%d  white%d blank%d\n", black, white, blank);
+				if (white != 0 && black != 0)
+				{
+					score += 0;
+
+				}
+				else if (black == 1 && blank == 4)
+				{
+					score += 1;
+				}
+				else if (black == 2 && blank == 3)
+				{
+					score += 10;
+				}
+				else if (black == 3 && blank == 2)
+				{
+					score += 100;
+				}
+				else if (black == 4 && blank == 1)
+				{
+					score += 10000;
+				}
+				else if (black == 5 && blank == 0)
+				{
+					score += 1000000;
+				}
+				else if (white == 1 && blank == 4)
+				{
+					score -= 1;
+				}
+				else if (white == 2 && blank == 3)
+				{
+					score -= 10;
+				}
+				else if (white == 3 && blank == 2)
+				{
+					if (m[i][j] == 0 && m[i + 1][j - 1] == -1 && m[i + 2][j - 2] == -1 && m[i + 3][j - 3] == -1 && m[i + 4][j - 4] == 0)
+					{
+						score -= 2000;
+					}
+					else
+					{
+						score -= 1000;
+					}
+
+				}
+				else if (white == 4 && blank == 1)
+				{
+					score -= 100000;
+
+				}
+				else if (white == 5)
+				{
+					score -= 10000000;
+				}
+
+			}
+			/*printf("%lld\n",score);
+			puts("---------------------");*/
+		}
+	}
+	//if (m[10][10] ==1)
+	//{
+	//	printf("%lld\n", score);
+	//	puts("---------------------");
+	//}
+	m[x][y] = 0;
+	return score;
+}
+long long  int evaluate(int m[][15], int x, int y) //当前棋盘为m，当前点为(x,y)
+{
+	long long int score = 0, a, b;
 
 	a = evaluate_white(m, x, y, -1);
 	b = evaluate_white(m, x, y, 1);
 	score = a + b;
 	return score;
 }
-int evaluate_white(int m[][15], int x, int y, int side)
+long long int evaluate_white(int m[][15], int x, int y, int side)
 {
-	int score = 0;
+	long long int score = 0;
 	int state1 = 0, state2 = 0, state3 = 0, state4 = 0;//1冲四，2活三，3眠三，4活二
 	m[x][y] = side;
 	//先判断连五
